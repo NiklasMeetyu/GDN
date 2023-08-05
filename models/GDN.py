@@ -156,6 +156,30 @@ class GDN(nn.Module):
 
             topk_indices_ji = torch.topk(cos_ji_mat, topk_num, dim=-1)[1]
 
+            # ************** ACTIVATE Similarity Thresholding **************
+            
+            # similarity_threshold_active = True is recommended as it has been demonstrated by a master's thesis at KTH Royal Institute of Technology that this approach leads to better accuracy and faster computations.
+            # The research is publicly available in the DiVA portal from September 2023.
+            # Title: Anomaly Detection in the EtherCAT Network of a Power Station
+            # Subtitle: Improving a Graph Convolutional Neural Network Framework
+            # Author: Niklas Barth
+            
+            similarity_thresholding_active = True # Set to false if you would like to deactivate this approach.
+            if(similarity_thresholding_active):
+                # Set a cosine similarity threshold
+                threshold = 0.5 # Higher thresholds may be better for some datasets. Experiment with different settings to reach the best performance.
+
+                # Get the indices that have cosine similarity greater than the threshold.
+                indices_i, indices_j = torch.where(cos_ji_mat > threshold)
+
+                # Combine the indices into a tensor.
+                indices_ji = torch.stack((indices_j, indices_i), dim=1)
+
+                # Get the top k indices.
+                topk_indices_ji = torch.topk(torch.where(cos_ji_mat > torch.ones_like(cos_ji_mat) * threshold, cos_ji_mat, torch.zeros_like(cos_ji_mat)), topk_num, dim=-1)[1]
+            
+            # ************** END Similarity Thresholding Approach **************
+
             self.learned_graph = topk_indices_ji
 
             gated_i = torch.arange(0, node_num).T.unsqueeze(1).repeat(1, topk_num).flatten().to(device).unsqueeze(0)
